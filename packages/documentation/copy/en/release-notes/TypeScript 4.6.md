@@ -5,16 +5,6 @@ permalink: /docs/handbook/release-notes/typescript-4-6.html
 oneline: TypeScript 4.6 Release Notes
 ---
 
-## What's New Since the Beta and RC?
-
-When we announced our beta, we missed documenting two great features - [control flow analysis for destructured discriminated unions](#cfa-destructured-discriminated-unions) and [the addition of the `es2022`](#target-es2022) output target.
-An additional noteworthy change that has been present since our beta is [the removal of `void 0` arguments in the `react-jsx` mode](#no-void-0-react-jsx)
-
-One change that made its way to our RC, but which we didn't capture in our prior announcement was [suggestions for mismatched JSDoc parameter names](#jsdoc-name-suggestions).
-
-Since our RC, we've also done some internal refactoring which has fixed certain issues, corrected some bizarre error messages, and improved type-checking performance by 3% in certain cases.
-You can [read up more on that change here](https://github.com/microsoft/TypeScript/pull/47738).
-
 ## Allowing Code in Constructors Before `super()`
 
 In JavaScript classes it's mandatory to call `super()` before referring to `this`.
@@ -68,7 +58,7 @@ function processAction(action: Action) {
 
 This lets us work with objects that can hold different data, but a common field tells us _which_ data those objects have.
 
-This is very common in TypeScript; however, depending on your preferences, you might have wanted to destructure `kind` and `payload` in the the example above.
+This is very common in TypeScript; however, depending on your preferences, you might have wanted to destructure `kind` and `payload` in the example above.
 Perhaps something like the following:
 
 ```ts

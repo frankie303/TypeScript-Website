@@ -1,6 +1,5 @@
-import { Sandbox } from "@typescript/sandbox"
 import { PlaygroundPlugin, PluginFactory } from ".."
-import { createUI, UI } from "../createUI"
+import { createUI } from "../createUI"
 import { localize } from "../localizeWithFallback"
 
 let allLogs: string[] = []
@@ -214,18 +213,23 @@ function rewireLoggingToElement(
     } else if (typeof arg === "string") {
       textRep = '"' + htmlEscape(arg) + '"'
     } else if (isObj) {
-      const name = arg.constructor && arg.constructor.name
+      const name = arg.constructor && arg.constructor.name || ""
       // No one needs to know an obj is an obj
       const nameWithoutObject = name && name === "Object" ? "" : htmlEscape(name)
       const prefix = nameWithoutObject ? `${nameWithoutObject}: ` : ""
 
-      // JSON.stringify omits any keys with a value of undefined. To get around this, we replace undefined with the text __undefined__ and then do a global replace using regex back to keyword undefined
       textRep =
         prefix +
-        JSON.stringify(arg, (_, value) => (value === undefined ? "__undefined__" : value), 2).replace(
-          /"__undefined__"/g,
-          "undefined"
-        )
+        JSON.stringify(
+          arg,
+          (_, value) => {
+            // JSON.stringify omits any keys with a value of undefined. To get around this, we replace undefined with the text __undefined__ and then do a global replace using regex back to keyword undefined
+            if (value === undefined) return "__undefined__"
+            if (typeof value === 'bigint') return `BigInt('${value.toString()}')`
+            return value
+          },
+          2
+        ).replace(/"__undefined__"/g, "undefined")
 
       textRep = htmlEscape(textRep)
     } else {

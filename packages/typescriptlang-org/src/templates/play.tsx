@@ -1,12 +1,12 @@
 import React, { useEffect } from "react"
 import ReactDOM from "react-dom"
 import { Layout } from "../components/layout"
-import { withPrefix, graphql } from "gatsby"
+import { withPrefix } from "gatsby"
 
 import "./play.scss"
 import { RenderExamples } from "../components/ShowExamples"
 
-import { useIntl } from "react-intl";
+import { useIntl } from "react-intl"
 import { createInternational } from "../lib/createInternational"
 import { hasLocalStorage } from "../lib/hasLocalStorage"
 import { headCopy } from "../copy/en/head-seo"
@@ -18,8 +18,10 @@ import "reflect-metadata"
 import playgroundReleases from "../../../sandbox/src/releases.json"
 import { getPlaygroundUrls } from "../lib/playgroundURLs"
 
+import type * as playgroundPackage from "../../static/js/playground";
+
 // This gets set by the playground
-declare const playground: ReturnType<typeof import("@typescript/playground").setupPlayground>
+declare const playground: playgroundPackage.Playground;
 
 type Props = {
   pageContext: {
@@ -66,6 +68,8 @@ const Play: React.FC<Props> = (props) => {
     window.reactDOM = ReactDOM
     // @ts-ignore - so that plugins etc can use i18n
     window.i = i
+    // @ts-ignore - same as window.i but hopefully not overwritten by App Insights
+    window.__tsLocalize = i
 
     const getLoaderScript = document.createElement('script');
     getLoaderScript.src = withPrefix("/js/vs.loader.js");
@@ -75,9 +79,9 @@ const Play: React.FC<Props> = (props) => {
 
       let tsVersionParam = params.get("ts")
       // handle the nightly lookup 
-      if (tsVersionParam && tsVersionParam === "Nightly" || tsVersionParam === "next") {
-        // Avoids the CDN to doubly skip caching
-        const nightlyLookup = await fetch("https://tswebinfra.blob.core.windows.net/indexes/next.json", { cache: "no-cache" })
+      if (tsVersionParam === "Nightly" || tsVersionParam === "next") {
+        // The CDN is configured to have a short TTL on the indexes directory.
+        const nightlyLookup = await fetch("https://playgroundcdn.typescriptlang.org/indexes/next.json", { cache: "no-cache" })
         const nightlyJSON = await nightlyLookup.json()
         tsVersionParam = nightlyJSON.version
       }
@@ -95,7 +99,7 @@ const Play: React.FC<Props> = (props) => {
       const useLocalCompiler = tsVersion === "dev"
       const devIsh = ["pr", "dev"]
       const version = devIsh.find(d => tsVersion.includes(d)) ? "dev" : "min"
-      const urlForMonaco = useLocalCompiler ? "http://localhost:5615/dev/vs" : `https://typescript.azureedge.net/cdn/${tsVersion}/monaco/${version}/vs`
+      const urlForMonaco = useLocalCompiler ? "http://localhost:5615/dev/vs" : `https://playgroundcdn.typescriptlang.org/cdn/${tsVersion}/monaco/${version}/vs`
 
       // Make a quick HEAD call for the main monaco editor for this version of TS, if it
       // bails then give a useful error message and bail.
@@ -107,11 +111,11 @@ const Play: React.FC<Props> = (props) => {
           div.style.webkitAnimation = ""
         })
 
-        document.getElementById("loading-message")!.innerHTML = `This version of TypeScript <em>(${tsVersion?.replace("<", "-")})</em><br/>has not been prepared for the Playground<br/><br/>Try <a href='/play?ts=${latestRelease}${document.location.hash}'>${latestRelease}</a> or <a href="/play?ts=next${document.location.hash}">Nightly</a>`
+        document.getElementById("loading-message")!.innerHTML = `This version of TypeScript <em>(${tsVersion?.replace(/</g, "-")})</em><br/>has not been prepared for the Playground<br/><br/>Try <a href='/play?ts=${latestRelease}${document.location.hash}'>${latestRelease}</a> or <a href="/play?ts=next${document.location.hash}">Nightly</a>`
         return
       }
 
-      // Allow prod/staging builds to set a custom commit prefix to bust caches
+      // Allow prod builds to set a custom commit prefix to bust caches
       const { sandboxRoot, playgroundRoot, playgroundWorker } = getPlaygroundUrls()
 
       // @ts-ignore
@@ -137,7 +141,7 @@ const Play: React.FC<Props> = (props) => {
         }
       });
 
-      re(["vs/editor/editor.main", "vs/language/typescript/tsWorker", "typescript-sandbox/index", "typescript-playground/index"], async (main: typeof import("monaco-editor"), tsWorker: any, sandbox: typeof import("@typescript/sandbox"), playground: typeof import("@typescript/playground")) => {
+      re(["vs/editor/editor.main", "vs/language/typescript/tsWorker", "typescript-sandbox/index", "typescript-playground/index"], async (main: typeof import("monaco-editor"), tsWorker: any, sandbox: typeof import("@typescript/sandbox"), playground: typeof playgroundPackage) => {
         // Importing "vs/language/typescript/tsWorker" will set ts as a global
         const ts = (global as any).ts || tsWorker.typescript
         const isOK = main && ts && sandbox && playground
@@ -205,7 +209,7 @@ const Play: React.FC<Props> = (props) => {
           <li className="name hide-small"><span>Playground</span></li>
 
           <li className="dropdown">
-            <a id="compiler-options-button" href="#" className="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="menu" aria-expanded="false" aria-controls="compiler-options-dropdown">{i("play_subnav_config")} <span className="caret"></span></a>
+           <a id="compiler-options-button" href="#" className="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="menu" aria-expanded="false" aria-controls="compiler-options-dropdown" style={{ overflow: "hidden", whiteSpace:"nowrap" }}>{i("play_subnav_config")} <span className="caret"></span></a>
             <div id="compiler-options-dropdown" className="dropdown-dialog" aria-labelledby="compiler-options-button">
               <h3>{i("play_subnav_config")}</h3>
               <div className="info" id="config-container">
@@ -236,14 +240,6 @@ const Play: React.FC<Props> = (props) => {
           </li>
 
           <li className="dropdown">
-            <a href="#" id="whatisnew-button" className="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="menu" aria-expanded="false" aria-controls="whatisnew">{i("play_subnav_whatsnew")} <span className="caret"></span></a>
-            <div className="dropdown-dialog" id="whatisnew" aria-labelledby="whatisnew-button">
-              <button role="button" aria-label="Close dropdown" className="examples-close">{i("play_subnav_examples_close")}</button>
-              <RenderExamples defaultSection="4.4" sections={["4.4", "4.3", "4.2", "4.1", "4.0", "3.8", "3.7", "Playground"]} examples={props.pageContext.examplesTOC} locale={props.pageContext.lang} />
-            </div>
-          </li>
-
-          <li className="dropdown">
             <a href="#" id="handbook-button" className="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="menu" aria-expanded="false" aria-controls="examples">{i("play_subnav_handbook")} <span className="caret"></span></a>
           </li>
         </ul>
@@ -265,13 +261,13 @@ const Play: React.FC<Props> = (props) => {
 
               <ul>
                 <li id="versions" className="dropdown" >
-                  <a href="#" data-toggle="dropdown" role="button" aria-haspopup="menu" aria-expanded="false" aria-controls="versions-dropdown" id='versions-button'>{i("play_downloading_version")}... <span className="caret" /></a>
+                  <a href="#" data-toggle="dropdown" role="button" aria-haspopup="menu" aria-expanded="false" aria-controls="versions-dropdown" id='versions-button' style={{ overflow: "hidden", whiteSpace:"nowrap" }}>{i("play_downloading_version")}... <span className="caret" /></a>
                   <ul className="dropdown-menu versions" id="versions-dropdown" aria-labelledby="versions-button"></ul>
                 </li>
                 <li><a id="run-button" href="#" role="button">{i("play_toolbar_run")}</a></li>
 
                 <li className="dropdown">
-                  <a href="#" id="exports-dropdown" className="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" aria-controls="export-dropdown-menu">{i("play_toolbar_export")} <span className="caret"></span></a>
+                  <a href="#" id="exports-dropdown" className="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" aria-controls="export-dropdown-menu" style={{ overflow: "hidden", whiteSpace:"nowrap" }}>{i("play_toolbar_export")} <span className="caret"></span></a>
                   <ul className="dropdown-menu" id='export-dropdown-menu' aria-labelledby="whatisnew-button">
                     <li><a href="#" onClick={() => playground.exporter.exportAsTweet()} aria-label={i("play_export_tweet_md")} >{i("play_export_tweet_md")}</a></li>
                     <li role="separator" className="divider"></li>
